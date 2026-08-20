@@ -77,11 +77,12 @@ class TestSyntheticDataGenerator(unittest.TestCase):
 
             with open(csv_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
-                self.assertIsNotNone(reader.fieldnames)
-                assert reader.fieldnames is not None
-                self.assertIn("timestamp_iso", reader.fieldnames)
-                self.assertIn("client_ip", reader.fieldnames)
-                self.assertIn("header_anomaly_score", reader.fieldnames)
+                fieldnames = reader.fieldnames
+                if fieldnames is None:
+                    self.fail("CSV missing header row")
+                self.assertIn("timestamp_iso", fieldnames)
+                self.assertIn("client_ip", fieldnames)
+                self.assertIn("header_anomaly_score", fieldnames)
                 rows = list(reader)
                 self.assertEqual(len(rows), 20)
 

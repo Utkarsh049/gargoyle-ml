@@ -14,10 +14,11 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-# Ensure repo root is on sys.path
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# Ensure repo root is on sys.path when executed as a script
+if __package__ in (None, ""):
+    REPO_ROOT = Path(__file__).resolve().parent.parent
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
 
 from features.extract import load_dataset
 from features.spec import FEATURE_NAMES, NUM_FEATURES
@@ -60,9 +61,9 @@ class EvaluationMetrics:
 
 
 def calculate_metrics(
-    y_true: Sequence[int] | np.ndarray | Any,
-    y_pred: Sequence[int] | np.ndarray | Any,
-    y_probs: Optional[Sequence[float] | np.ndarray | Any] = None,
+    y_true: Sequence[int] | np.ndarray,
+    y_pred: Sequence[int] | np.ndarray,
+    y_probs: Optional[Sequence[float] | np.ndarray] = None,
     threshold: float = 0.5,
 ) -> EvaluationMetrics:
     """Calculate comprehensive evaluation metrics from ground truth and predictions."""
@@ -114,8 +115,8 @@ def calculate_metrics(
 
 
 def evaluate_threshold_sweep(
-    y_true: Sequence[int] | np.ndarray | Any,
-    y_probs: Sequence[float] | np.ndarray | Any,
+    y_true: Sequence[int] | np.ndarray,
+    y_probs: Sequence[float] | np.ndarray,
     thresholds: Sequence[float] = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
 ) -> List[EvaluationMetrics]:
     """Evaluate model performance across a range of decision thresholds."""
@@ -128,8 +129,8 @@ def evaluate_threshold_sweep(
 
 
 def evaluate_rule_baseline(
-    X: Sequence[Sequence[float]] | np.ndarray | Any,
-    y_true: Sequence[int] | np.ndarray | Any,
+    X: Sequence[Sequence[float]] | np.ndarray,
+    y_true: Sequence[int] | np.ndarray,
 ) -> EvaluationMetrics:
     """Evaluate a naive rule-based abuse detector baseline on the dataset.
 

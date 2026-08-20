@@ -15,10 +15,11 @@ import pickle
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-# Ensure repo root is on sys.path
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# Ensure repo root is on sys.path when executed as a script
+if __package__ in (None, ""):
+    REPO_ROOT = Path(__file__).resolve().parent.parent
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
 
 from evaluation.evaluate import (
     EvaluationMetrics,
@@ -36,8 +37,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-HAS_SKLEARN: bool = True
-
 
 def train_model(
     X_train: Any,
@@ -45,9 +44,6 @@ def train_model(
     config: ModelConfig,
 ) -> Any:
     """Train a classifier based on the provided configuration."""
-    if not HAS_SKLEARN:
-        raise RuntimeError("scikit-learn is required to train models. Install dependencies first.")
-
     if config.model_type == "logistic_regression":
         model = LogisticRegression(
             C=config.lr_c,
@@ -91,19 +87,13 @@ def run_training_pipeline(
 
     X, y, labels = load_dataset(data_path, as_numpy=True)
 
-    if HAS_SKLEARN:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            test_size=config.test_size,
-            random_state=config.random_state,
-            stratify=y,
-        )
-    else:
-        # Fallback manual split
-        split_idx = int(len(X) * (1.0 - config.test_size))
-        X_train, X_test = X[:split_idx], X[split_idx:]
-        y_train, y_test = y[:split_idx], y[split_idx:]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=config.test_size,
+        random_state=config.random_state,
+        stratify=y,
+    )
 
     model = train_model(X_train, y_train, config)
 

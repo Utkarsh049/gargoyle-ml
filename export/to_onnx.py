@@ -12,10 +12,11 @@ import pickle
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-# Ensure repo root is on sys.path
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# Ensure repo root is on sys.path when executed as a script
+if __package__ in (None, ""):
+    REPO_ROOT = Path(__file__).resolve().parent.parent
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
 
 from features.spec import (
     NUM_FEATURES,
@@ -29,8 +30,6 @@ import onnx
 import onnxruntime as ort
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
-
-HAS_ONNX: bool = True
 
 
 def export_model_to_onnx(
@@ -54,9 +53,6 @@ def export_model_to_onnx(
     Returns:
         Path to the exported ONNX model.
     """
-    if not HAS_ONNX:
-        raise RuntimeError("skl2onnx and onnx are required for ONNX export.")
-
     initial_type = [(input_name, FloatTensorType([None, num_features]))]
 
     options: Dict[Any, Dict[str, Any]] = {
@@ -98,9 +94,6 @@ def verify_onnx_model(
     Returns:
         Tuple of (is_valid, metadata_dict)
     """
-    if not HAS_ONNX:
-        raise RuntimeError("onnxruntime is required for ONNX verification.")
-
     path = Path(onnx_path)
     if not path.exists():
         raise FileNotFoundError(f"ONNX model not found: {path}")
@@ -151,10 +144,11 @@ def main() -> None:
         help="Path to output ONNX model (default: models/abuse_model.onnx)",
     )
     parser.add_argument(
-        "--verify",
-        action="store_true",
+        "--no-verify",
+        dest="verify",
+        action="store_false",
         default=True,
-        help="Verify exported ONNX model with onnxruntime (default: True)",
+        help="Skip verifying exported ONNX model with onnxruntime",
     )
 
     args = parser.parse_args()

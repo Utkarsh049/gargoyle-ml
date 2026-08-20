@@ -12,8 +12,6 @@ from typing import Any, List, Sequence, Tuple
 
 import numpy as np
 
-HAS_NUMPY: bool = True
-
 SPEC_VERSION: str = "1.0.0"
 ONNX_INPUT_NAME: str = "float_input"
 ONNX_INPUT_SHAPE: Tuple[int | None, int] = (None, 6)
@@ -122,7 +120,7 @@ def get_cold_start_vector(as_numpy: bool = False) -> Any:
                   Otherwise, return as list of float.
     """
     defaults = [f.cold_start_default for f in FEATURE_SPEC]
-    if as_numpy and HAS_NUMPY:
+    if as_numpy:
         return np.array(defaults, dtype=np.float32)
     return defaults
 
@@ -139,7 +137,7 @@ def validate_feature_vector(vector: Sequence[float] | Any) -> bool:
     Raises:
         ValueError: If length or values violate the specification.
     """
-    if HAS_NUMPY and isinstance(vector, np.ndarray):
+    if isinstance(vector, np.ndarray):
         if vector.ndim != 1 or vector.shape[0] != NUM_FEATURES:
             raise ValueError(
                 f"Expected 1D feature vector of length {NUM_FEATURES}, got shape {vector.shape}"

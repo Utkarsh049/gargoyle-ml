@@ -12,18 +12,17 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-# Ensure repo root is on sys.path
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# Ensure repo root is on sys.path when executed as a script
+if __package__ in (None, ""):
+    REPO_ROOT = Path(__file__).resolve().parent.parent
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
 
 from features.extract import FeatureExtractor, compute_header_anomaly_from_headers
 from features.spec import FEATURE_NAMES, NUM_FEATURES, ONNX_INPUT_NAME, SPEC_VERSION
 
 import numpy as np
 import onnxruntime as ort
-
-HAS_ORT: bool = True
 
 
 def run_parity_checks(
@@ -50,7 +49,7 @@ def run_parity_checks(
         )
 
     session = None
-    if model_path and Path(model_path).exists() and HAS_ORT:
+    if model_path and Path(model_path).exists():
         session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
 
     all_passed = True
