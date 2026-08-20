@@ -1,0 +1,15 @@
+# Gargoyle ML - Python Dependencies
+# Tabular data handling & numerical computing
+numpy>=1.24.0,<2.0.0
+pandas>=2.0.0,<3.0.0
+
+# Machine learning & evaluation
+scikit-learn>=1.3.0,<1.6.0
+
+# ONNX export & runtime
+skl2onnx>=1.15.0,<1.18.0
+onnx>=1.14.0,<1.17.0
+onnxruntime>=1.16.0,<1.19.0
+
+# Testing & code quality
+pytest>=7.4.0
