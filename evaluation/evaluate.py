@@ -33,6 +33,8 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
+HAS_SKLEARN: bool = True
+
 
 @dataclass
 class EvaluationMetrics:
