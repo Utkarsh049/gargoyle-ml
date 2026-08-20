@@ -152,10 +152,11 @@ def main() -> None:
         help="Path to output ONNX model (default: models/abuse_model.onnx)",
     )
     parser.add_argument(
-        "--verify",
-        action="store_true",
+        "--no-verify",
+        dest="verify",
+        action="store_false",
         default=True,
-        help="Verify exported ONNX model with onnxruntime (default: True)",
+        help="Skip verifying exported ONNX model with onnxruntime",
     )
 
     args = parser.parse_args()
