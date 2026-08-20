@@ -22,27 +22,40 @@ Six phases, named P1–P6 to keep them distinct from the Go core's numbered phas
 
 ---
 
-## Phase P2 — Synthetic data generation
+## Phase P2 — Synthetic data generation `[COMPLETED]`
 
-**Build:** A small Python script that hand-generates fake traffic rows matching the feature spec — some labeled `normal`, some labeled with an attack type.
+**Status:** Completed
 
-**Why here:** Lets you build and test the entire pipeline before real labeled data exists. Doesn't need to be realistic, just structurally correct.
+**Deliverables:**
+- [`data/generate_synthetic.py`](data/generate_synthetic.py) — CLI & module for generating structurally compliant synthetic feature datasets and raw request logs across 5 traffic profiles (`normal`, `rate_burst`, `brute_force`, `endpoint_scan`, `header_bot`).
+- [`data/processed/synthetic_features.csv`](data/processed/synthetic_features.csv) — 1,500 labeled feature vector rows (Spec v1.0.0, 6 features + `label` + `is_abusive`).
+- [`data/raw/synthetic_traffic.csv`](data/raw/synthetic_traffic.csv) — 1,000 raw simulated HTTP request logs.
+- [`tests/test_synthetic.py`](tests/test_synthetic.py) — Unit tests for synthetic generation, label diversity, CSV serialization, and feature spec compliance (5/5 tests passing).
+
+**Why here:** Lets you build and test the entire training and evaluation pipeline before real labeled data from Go's simulator exists.
 
 **Depends on:** P1.
 
-**Done when:** You have a CSV/dataframe of a few hundred synthetic rows, correctly labeled, matching the feature spec's shape.
+**Done when:** You have a CSV/dataframe of synthetic rows, correctly labeled, matching the feature spec's shape. (Verified)
 
 ---
 
-## Phase P3 — Baseline training pipeline
+## Phase P3 — Baseline training pipeline `[COMPLETED]`
 
-**Build:** `train.py` and `evaluate.py`, run end-to-end against the synthetic data from P2. Get the full loop working: load → extract features → train → evaluate → print metrics.
+**Status:** Completed
 
-**Why here:** The goal isn't a good model yet — it's a working *pipeline*. Once this runs cleanly on fake data, swapping in real data later (P4) is a small change, not a rebuild.
+**Deliverables:**
+- [`features/extract.py`](features/extract.py) — Sliding-window feature extraction engine (60s rate/timing variance, 5m distinct paths/auth failures, path normalization) and dataset loaders.
+- [`training/model_config.py`](training/model_config.py) — Hyperparameter dataclasses for `LogisticRegression` and `RandomForestClassifier` with JSON serialization.
+- [`training/train.py`](training/train.py) — End-to-end training pipeline with stratified train/test splitting, probability estimation, threshold sweeps, baseline comparison, and artifact persistence (`models/abuse_model.pkl`, `models/train_metrics.json`).
+- [`evaluation/evaluate.py`](evaluation/evaluate.py) — Evaluation suite computing Precision, Recall, F1, Specificity, ROC-AUC, Confusion Matrix, and Go rule baseline comparison report.
+- [`tests/test_extract.py`](tests/test_extract.py), [`tests/test_evaluation.py`](tests/test_evaluation.py), [`tests/test_training.py`](tests/test_training.py) — Comprehensive unit test suites (28/28 tests passing).
+
+**Why here:** Establishes the complete training and evaluation pipeline end-to-end. Once real simulator data arrives (P4), swapping data sources requires zero structural changes.
 
 **Depends on:** P2.
 
-**Done when:** Running `train.py` produces a trained model and `evaluate.py` prints precision/recall/F1, even if the numbers are mediocre (expected, on fake data).
+**Done when:** Running `train.py` produces a trained model (`abuse_model.pkl`) and `evaluate.py` prints precision/recall/F1 and comparison metrics. (Verified)
 
 ---
 
