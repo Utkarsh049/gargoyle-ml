@@ -31,8 +31,6 @@ import onnxruntime as ort
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 
-HAS_ONNX: bool = True
-
 
 def export_model_to_onnx(
     model: Any,
@@ -55,9 +53,6 @@ def export_model_to_onnx(
     Returns:
         Path to the exported ONNX model.
     """
-    if not HAS_ONNX:
-        raise RuntimeError("skl2onnx and onnx are required for ONNX export.")
-
     initial_type = [(input_name, FloatTensorType([None, num_features]))]
 
     options: Dict[Any, Dict[str, Any]] = {
@@ -99,9 +94,6 @@ def verify_onnx_model(
     Returns:
         Tuple of (is_valid, metadata_dict)
     """
-    if not HAS_ONNX:
-        raise RuntimeError("onnxruntime is required for ONNX verification.")
-
     path = Path(onnx_path)
     if not path.exists():
         raise FileNotFoundError(f"ONNX model not found: {path}")

@@ -1,7 +1,5 @@
 # Gargoyle ML — Abuse Detection Pipeline & Benchmark Report
 
-**Document Version:** `1.0.0`  
-**Date:** August 20, 2026  
 **Target System:** Gargoyle API Gateway (Go Core + Python Offline ML Pipeline)  
 **Deliverable Artifact:** `abuse_model.onnx` (for in-process Go inference)
 

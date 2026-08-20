@@ -14,10 +14,11 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-# Ensure repo root is on sys.path
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# Ensure repo root is on sys.path when executed as a script
+if __package__ in (None, ""):
+    REPO_ROOT = Path(__file__).resolve().parent.parent
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
 
 from features.extract import load_dataset
 from features.spec import FEATURE_NAMES, NUM_FEATURES
@@ -31,8 +32,6 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
-
-HAS_SKLEARN: bool = True
 
 
 @dataclass

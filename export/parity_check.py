@@ -24,8 +24,6 @@ from features.spec import FEATURE_NAMES, NUM_FEATURES, ONNX_INPUT_NAME, SPEC_VER
 import numpy as np
 import onnxruntime as ort
 
-HAS_ORT: bool = True
-
 
 def run_parity_checks(
     fixtures_path: Path | str = "fixtures/parity_fixtures.json",
@@ -51,7 +49,7 @@ def run_parity_checks(
         )
 
     session = None
-    if model_path and Path(model_path).exists() and HAS_ORT:
+    if model_path and Path(model_path).exists():
         session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
 
     all_passed = True

@@ -19,10 +19,11 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-# Ensure repo root is on sys.path
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+# Ensure repo root is on sys.path when executed as a script
+if __package__ in (None, ""):
+    REPO_ROOT = Path(__file__).resolve().parent.parent
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
 
 from features.spec import (
     FEATURE_NAMES,
@@ -33,8 +34,6 @@ from features.spec import (
 )
 
 import numpy as np
-
-HAS_NUMPY: bool = True
 
 
 @dataclass
@@ -357,7 +356,7 @@ def load_dataset(
             y_list.append(int(row["is_abusive"]))
             labels.append(row.get("label", "normal"))
 
-    if as_numpy and HAS_NUMPY:
+    if as_numpy:
         return np.array(X_list, dtype=np.float32), np.array(y_list, dtype=np.int64), labels
 
     return X_list, y_list, labels
