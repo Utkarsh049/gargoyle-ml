@@ -77,6 +77,8 @@ class TestSyntheticDataGenerator(unittest.TestCase):
 
             with open(csv_path, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
+                self.assertIsNotNone(reader.fieldnames)
+                assert reader.fieldnames is not None
                 self.assertIn("timestamp_iso", reader.fieldnames)
                 self.assertIn("client_ip", reader.fieldnames)
                 self.assertIn("header_anomaly_score", reader.fieldnames)

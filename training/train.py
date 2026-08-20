@@ -31,15 +31,12 @@ from features.extract import FeatureExtractor, load_dataset
 from features.spec import FEATURE_NAMES, NUM_FEATURES, SPEC_VERSION
 from training.model_config import ModelConfig
 
-try:
-    import numpy as np  # type: ignore
-    from sklearn.ensemble import RandomForestClassifier  # type: ignore
-    from sklearn.linear_model import LogisticRegression  # type: ignore
-    from sklearn.model_selection import train_test_split  # type: ignore
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 
-    HAS_SKLEARN = True
-except ImportError:
-    HAS_SKLEARN = False
+HAS_SKLEARN: bool = True
 
 
 def train_model(

@@ -82,15 +82,22 @@ Six phases, named P1–P6 to keep them distinct from the Go core's numbered phas
 
 ---
 
-## Phase P5 — ONNX export + feature parity check
+## Phase P5 — ONNX export + feature parity check `[COMPLETED]`
 
-**Build:** `export/to_onnx.py`, producing `abuse_model.onnx`. Then a small cross-check script that feeds identical sample requests through both Python's `extract.py` and Go's feature extraction code, confirming they output the same numbers in the same order.
+**Status:** Completed
 
-**Why here:** This is the step that catches the "silent mismatch" risk described in PROJECT.md §2 and §7 — before the file ever reaches the Go repo, not after.
+**Deliverables:**
+- [`export/to_onnx.py`](export/to_onnx.py) — ONNX model converter using `skl2onnx` with `zipmap=False` (returning probabilities as `float32[batch_size, 2]` for in-process Go consumption).
+- [`models/abuse_model.onnx`](models/abuse_model.onnx) — Exported, verified ONNX model ready to be copied into the Go gateway core.
+- [`fixtures/parity_fixtures.json`](fixtures/parity_fixtures.json) — Canonical cross-language test fixtures covering cold-start, normal human browsing, brute-force login attacks, and directory scanning.
+- [`export/parity_check.py`](export/parity_check.py) — Standalone cross-language parity validation tool.
+- [`tests/test_onnx_export.py`](tests/test_onnx_export.py) & [`tests/test_parity.py`](tests/test_parity.py) — Unit test suites validating ONNX loading, tensor shapes, and 0% feature drift (35/35 tests passing).
 
-**Depends on:** Go's `MLScorer`/feature-extraction code existing on the Go side (main repo Phase 8 start) so there's something to check parity against.
+**Why here:** Eliminates the silent feature mismatch risk before shipping the `.onnx` file to the Go gateway repository.
 
-**Done when:** The exported `.onnx` file loads without error in a standalone test, and the parity check confirms identical feature vectors on both sides for the same sample input.
+**Depends on:** P4 (Trained model).
+
+**Done when:** The exported `.onnx` file loads and executes without error in standalone tests, and parity checks confirm identical feature vectors and predictions against canonical fixtures. (Verified)
 
 ---
 

@@ -22,20 +22,17 @@ if str(REPO_ROOT) not in sys.path:
 from features.extract import load_dataset
 from features.spec import FEATURE_NAMES, NUM_FEATURES
 
-try:
-    import numpy as np  # type: ignore
-    from sklearn.metrics import (  # type: ignore
-        accuracy_score,
-        confusion_matrix,
-        f1_score,
-        precision_score,
-        recall_score,
-        roc_auc_score,
-    )
+import numpy as np
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 
-    HAS_SKLEARN = True
-except ImportError:
-    HAS_SKLEARN = False
+HAS_SKLEARN: bool = True
 
 
 @dataclass
@@ -63,9 +60,9 @@ class EvaluationMetrics:
 
 
 def calculate_metrics(
-    y_true: Sequence[int],
-    y_pred: Sequence[int],
-    y_probs: Optional[Sequence[float]] = None,
+    y_true: Sequence[int] | np.ndarray | Any,
+    y_pred: Sequence[int] | np.ndarray | Any,
+    y_probs: Optional[Sequence[float] | np.ndarray | Any] = None,
     threshold: float = 0.5,
 ) -> EvaluationMetrics:
     """Calculate comprehensive evaluation metrics from ground truth and predictions."""
@@ -117,8 +114,8 @@ def calculate_metrics(
 
 
 def evaluate_threshold_sweep(
-    y_true: Sequence[int],
-    y_probs: Sequence[float],
+    y_true: Sequence[int] | np.ndarray | Any,
+    y_probs: Sequence[float] | np.ndarray | Any,
     thresholds: Sequence[float] = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
 ) -> List[EvaluationMetrics]:
     """Evaluate model performance across a range of decision thresholds."""
@@ -131,8 +128,8 @@ def evaluate_threshold_sweep(
 
 
 def evaluate_rule_baseline(
-    X: Sequence[Sequence[float]],
-    y_true: Sequence[int],
+    X: Sequence[Sequence[float]] | np.ndarray | Any,
+    y_true: Sequence[int] | np.ndarray | Any,
 ) -> EvaluationMetrics:
     """Evaluate a naive rule-based abuse detector baseline on the dataset.
 
