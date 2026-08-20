@@ -32,12 +32,9 @@ from features.spec import (
     validate_feature_vector,
 )
 
-try:
-    import numpy as np  # type: ignore
+import numpy as np
 
-    HAS_NUMPY = True
-except ImportError:
-    HAS_NUMPY = False
+HAS_NUMPY: bool = True
 
 
 @dataclass
@@ -109,7 +106,7 @@ def parse_timestamp_to_seconds(ts_val: Union[str, float, int]) -> float:
     """Parse timestamp string (ISO-8601 or float) to epoch seconds."""
     if isinstance(ts_val, (int, float)):
         return float(ts_val)
-    ts_str = str(ts_val).strip()
+    ts_str = ts_val.strip()
     try:
         return float(ts_str)
     except ValueError:
@@ -191,11 +188,11 @@ class FeatureExtractor:
                 (timestamps[i] - timestamps[i - 1]) * 1000.0
                 for i in range(1, len(timestamps))
             ]
-            avg_interval_ms = float(sum(deltas_ms) / len(deltas_ms))
+            avg_interval_ms = sum(deltas_ms) / len(deltas_ms)
 
             if len(deltas_ms) >= 2:
                 variance = sum((d - avg_interval_ms) ** 2 for d in deltas_ms) / (len(deltas_ms) - 1)
-                interval_stddev_ms = float(math.sqrt(max(0.0, variance)))
+                interval_stddev_ms = math.sqrt(max(0.0, variance))
             else:
                 interval_stddev_ms = 0.0
         else:
@@ -212,7 +209,7 @@ class FeatureExtractor:
         )
 
         # Feature 5: header_anomaly_score
-        anomaly_score = float(max(0.0, min(1.0, header_anomaly_score)))
+        anomaly_score = max(0.0, min(1.0, header_anomaly_score))
 
         vector = [
             requests_last_60s,

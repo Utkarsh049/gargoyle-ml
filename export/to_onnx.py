@@ -24,16 +24,13 @@ from features.spec import (
     get_cold_start_vector,
 )
 
-try:
-    import numpy as np  # type: ignore
-    import onnx  # type: ignore
-    import onnxruntime as ort  # type: ignore
-    from skl2onnx import convert_sklearn  # type: ignore
-    from skl2onnx.common.data_types import FloatTensorType  # type: ignore
+import numpy as np
+import onnx
+import onnxruntime as ort
+from skl2onnx import convert_sklearn
+from skl2onnx.common.data_types import FloatTensorType
 
-    HAS_ONNX = True
-except ImportError:
-    HAS_ONNX = False
+HAS_ONNX: bool = True
 
 
 def export_model_to_onnx(
@@ -69,7 +66,7 @@ def export_model_to_onnx(
     if doc_string is None:
         doc_string = f"Gargoyle abuse detection model (Spec v{SPEC_VERSION})"
 
-    onnx_model = convert_sklearn(
+    onnx_model: Any = convert_sklearn(
         model,
         initial_types=initial_type,
         options=options,
@@ -131,8 +128,8 @@ def verify_onnx_model(
     meta = {
         "inputs": [{"name": inp.name, "shape": inp.shape, "type": inp.type} for inp in inputs],
         "outputs": [{"name": out.name, "shape": out.shape, "type": out.type} for out in outputs],
-        "sample_output_labels": results[0].tolist() if len(results) > 0 else [],
-        "sample_output_probabilities": results[1].tolist() if len(results) > 1 else [],
+        "sample_output_labels": np.asarray(results[0]).tolist() if len(results) > 0 else [],
+        "sample_output_probabilities": np.asarray(results[1]).tolist() if len(results) > 1 else [],
     }
 
     return True, meta

@@ -22,13 +22,13 @@ class ModelConfig:
     # Logistic Regression hyperparameters
     lr_c: float = 1.0
     lr_max_iter: int = 1000
-    lr_class_weight: Optional[str] = "balanced"
-    lr_solver: str = "lbfgs"
+    lr_class_weight: Optional[Literal["balanced"] | Dict[Any, Any]] = "balanced"
+    lr_solver: Literal["lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"] = "lbfgs"
 
     # Random Forest hyperparameters
     rf_n_estimators: int = 100
     rf_max_depth: Optional[int] = 6
-    rf_class_weight: Optional[str] = "balanced"
+    rf_class_weight: Optional[Literal["balanced", "balanced_subsample"] | Dict[Any, Any]] = "balanced"
     rf_min_samples_split: int = 2
 
     # Artifact paths

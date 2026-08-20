@@ -46,7 +46,7 @@ class TestONNXExport(unittest.TestCase):
 
             sklearn_probs = lr.predict_proba(test_batch)
             onnx_results = session.run(None, {ONNX_INPUT_NAME: test_batch})
-            onnx_probs = onnx_results[1]
+            onnx_probs = np.asarray(onnx_results[1])
 
             np.testing.assert_allclose(sklearn_probs, onnx_probs, rtol=1e-4, atol=1e-4)
 
@@ -64,7 +64,7 @@ class TestONNXExport(unittest.TestCase):
 
             sklearn_probs = rf.predict_proba(test_batch)
             onnx_results = session.run(None, {ONNX_INPUT_NAME: test_batch})
-            onnx_probs = onnx_results[1]
+            onnx_probs = np.asarray(onnx_results[1])
 
             np.testing.assert_allclose(sklearn_probs, onnx_probs, rtol=1e-4, atol=1e-4)
 
@@ -77,8 +77,8 @@ class TestONNXExport(unittest.TestCase):
         cold_start = np.array([get_cold_start_vector(as_numpy=True)], dtype=np.float32)
 
         results = session.run(None, {ONNX_INPUT_NAME: cold_start})
-        labels = results[0]
-        probs = results[1]
+        labels = np.asarray(results[0])
+        probs = np.asarray(results[1])
 
         self.assertEqual(len(labels), 1)
         self.assertEqual(probs.shape, (1, 2))

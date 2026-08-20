@@ -10,12 +10,9 @@ from dataclasses import asdict, dataclass
 import math
 from typing import Any, List, Sequence, Tuple
 
-try:
-    import numpy as np  # type: ignore
+import numpy as np
 
-    HAS_NUMPY = True
-except ImportError:
-    HAS_NUMPY = False
+HAS_NUMPY: bool = True
 
 SPEC_VERSION: str = "1.0.0"
 ONNX_INPUT_NAME: str = "float_input"

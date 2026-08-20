@@ -10,7 +10,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Ensure repo root is on sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -20,13 +20,10 @@ if str(REPO_ROOT) not in sys.path:
 from features.extract import FeatureExtractor, compute_header_anomaly_from_headers
 from features.spec import FEATURE_NAMES, NUM_FEATURES, ONNX_INPUT_NAME, SPEC_VERSION
 
-try:
-    import numpy as np  # type: ignore
-    import onnxruntime as ort  # type: ignore
+import numpy as np
+import onnxruntime as ort
 
-    HAS_ORT = True
-except ImportError:
-    HAS_ORT = False
+HAS_ORT: bool = True
 
 
 def run_parity_checks(
@@ -102,8 +99,10 @@ def run_parity_checks(
         if session is not None and vector_match:
             input_tensor = np.array([actual_vec], dtype=np.float32)
             out = session.run(None, {ONNX_INPUT_NAME: input_tensor})
-            predicted_label = int(out[0][0])
-            predicted_prob = float(out[1][0][1])
+            out_labels = np.asarray(out[0])
+            out_probs = np.asarray(out[1])
+            predicted_label = int(out_labels[0])
+            predicted_prob = float(out_probs[0, 1])
 
             if expected_label is not None and predicted_label != expected_label:
                 model_passed = False
