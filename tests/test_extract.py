@@ -4,7 +4,13 @@ import os
 import tempfile
 import unittest
 
-from features.extract import ClientRequestRecord, FeatureExtractor, load_dataset
+from features.extract import (
+    ClientRequestRecord,
+    FeatureExtractor,
+    compute_header_anomaly_from_headers,
+    load_dataset,
+    parse_timestamp_to_seconds,
+)
 from features.spec import NUM_FEATURES, validate_feature_vector
 
 
@@ -82,14 +88,40 @@ class TestFeatureExtractor(unittest.TestCase):
         self.assertEqual(vec[3], 1.0)  # only /api/new in 5m
         self.assertEqual(vec[4], 0.0)  # old 401 is evicted
 
+    def test_header_anomaly_scoring(self):
+        # Clean browser headers
+        clean_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/json",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        self.assertEqual(compute_header_anomaly_from_headers(clean_headers), 0.0)
+
+        # Suspicious tool (python-requests, missing Accept-Language)
+        bot_headers = {
+            "User-Agent": "python-requests/2.31.0",
+            "Accept": "application/json",
+        }
+        score = compute_header_anomaly_from_headers(bot_headers)
+        self.assertGreaterEqual(score, 0.7)
+
+    def test_parse_timestamps(self):
+        iso_str = "2026-08-20T13:19:18.950340+00:00"
+        ts = parse_timestamp_to_seconds(iso_str)
+        self.assertGreater(ts, 1700000000.0)
+        self.assertEqual(parse_timestamp_to_seconds(100.5), 100.5)
+
 
 class TestLoadDataset(unittest.TestCase):
     """Test suite for load_dataset helper."""
 
     def test_load_existing_dataset(self):
-        dataset_path = "data/processed/synthetic_features.csv"
+        dataset_path = "data/processed/real_features.csv"
         if not os.path.exists(dataset_path):
-            self.skipTest(f"{dataset_path} not found")
+            dataset_path = "data/processed/synthetic_features.csv"
+
+        if not os.path.exists(dataset_path):
+            self.skipTest("No dataset found")
 
         X, y, labels = load_dataset(dataset_path, as_numpy=False)
         self.assertGreater(len(X), 0)

@@ -1,15 +1,18 @@
 """Feature extraction pipeline for Gargoyle ML.
 
 Extracts the 6 canonical features defined in features/feature_spec.md from:
-1. Raw HTTP request logs (using sliding time windows per client IP)
-2. Pre-computed feature datasets (CSV / JSON)
+1. Raw HTTP request logs (using sliding time windows per client IP / session)
+2. Simulator logs (ground_truth_5k.csv with JSON headers, ISO timestamps)
+3. Pre-computed feature datasets (CSV / JSON)
 """
 
 from __future__ import annotations
 
+import argparse
 from collections import defaultdict, deque
 import csv
 from dataclasses import dataclass
+from datetime import datetime
 import json
 import math
 from pathlib import Path
@@ -47,6 +50,88 @@ class ClientRequestRecord:
     header_anomaly_score: float
 
 
+def compute_header_anomaly_from_headers(headers: Dict[str, Any] | str) -> float:
+    """Compute header anomaly score [0.0, 1.0] from request headers dictionary or JSON string.
+
+    Evaluates:
+      - Missing User-Agent (+0.4)
+      - Known scanner/script User-Agent (+0.5)
+      - Generic/truncated browser User-Agent (+0.3)
+      - Missing Accept-Language header (+0.2)
+      - Wildcard Accept (*/*) (+0.1)
+    """
+    if isinstance(headers, str):
+        try:
+            headers_dict = json.loads(headers)
+        except Exception:
+            headers_dict = {}
+    elif isinstance(headers, dict):
+        headers_dict = headers
+    else:
+        headers_dict = {}
+
+    score = 0.0
+    ua = headers_dict.get("User-Agent", "")
+    if not ua:
+        score += 0.4
+    else:
+        ua_lower = ua.lower()
+        tool_keywords = [
+            "python-requests",
+            "sqlmap",
+            "nikto",
+            "curl",
+            "go-http-client",
+            "headlesschrome",
+            "wpscan",
+            "dirbuster",
+            "postman",
+        ]
+        if any(k in ua_lower for k in tool_keywords):
+            score += 0.5
+        elif "mozilla" in ua_lower and not any(
+            b in ua_lower for b in ["chrome/", "firefox/", "safari/", "edg/", "version/"]
+        ):
+            # Truncated or generic Mozilla header without actual browser engine
+            score += 0.3
+
+    if "Accept-Language" not in headers_dict:
+        score += 0.2
+
+    accept = headers_dict.get("Accept", "")
+    if accept == "*/*":
+        score += 0.1
+
+    return min(1.0, max(0.0, round(score, 3)))
+
+
+def parse_timestamp_to_seconds(ts_val: Union[str, float, int]) -> float:
+    """Parse timestamp string (ISO-8601 or float) to epoch seconds."""
+    if isinstance(ts_val, (int, float)):
+        return float(ts_val)
+    ts_str = str(ts_val).strip()
+    try:
+        return float(ts_str)
+    except ValueError:
+        pass
+
+    # ISO-8601 parsing
+    try:
+        dt = datetime.fromisoformat(ts_str)
+        return dt.timestamp()
+    except Exception:
+        pass
+
+    # Fallback to datetime strptime
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(ts_str, fmt).timestamp()
+        except ValueError:
+            continue
+
+    raise ValueError(f"Unable to parse timestamp: {ts_str}")
+
+
 class FeatureExtractor:
     """Extracts features from streaming or batch request logs per client."""
 
@@ -54,7 +139,7 @@ class FeatureExtractor:
     WINDOW_5M: float = 300.0
 
     def __init__(self) -> None:
-        # Client IP -> deque of ClientRequestRecord
+        # Client IP/Key -> deque of ClientRequestRecord
         self._client_history: Dict[str, deque[ClientRequestRecord]] = defaultdict(deque)
 
     def _normalize_path(self, path: str) -> str:
@@ -141,18 +226,19 @@ class FeatureExtractor:
         validate_feature_vector(vector)
         return vector
 
-    def extract_from_raw_logs(
+    def extract_from_simulator_logs(
         self,
-        raw_logs_path: Path | str,
+        raw_csv_path: Path | str,
+        output_csv_path: Optional[Path | str] = None,
     ) -> Tuple[List[List[float]], List[int], List[str]]:
-        """Extract features from a CSV file of raw request logs.
+        """Extract features from simulator raw logs (ground_truth_5k.csv format).
 
-        Returns:
-            Tuple of (feature_vectors, binary_labels, attack_type_names)
+        Columns: timestamp, batch_id, sequence_num, client_id, source_identifier,
+                 method, endpoint, headers_json, status_code, latency_ms, true_label
         """
-        path = Path(raw_logs_path)
+        path = Path(raw_csv_path)
         if not path.exists():
-            raise FileNotFoundError(f"Raw logs file not found: {path}")
+            raise FileNotFoundError(f"Simulator logs file not found: {path}")
 
         X: List[List[float]] = []
         y: List[int] = []
@@ -161,11 +247,72 @@ class FeatureExtractor:
         with open(path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                ts = float(row["timestamp_iso"])
-                ip = row["client_ip"]
-                req_path = row["path"]
-                status = int(row["status_code"])
-                anomaly = float(row["header_anomaly_score"])
+                ts = parse_timestamp_to_seconds(row["timestamp"])
+                client_id = row.get("client_id", "client")
+                batch_id = row.get("batch_id", "default")
+                client_key = f"{client_id}:{batch_id}"
+
+                req_path = row.get("endpoint", row.get("path", "/"))
+                status = int(row.get("status_code", 200))
+
+                if "headers_json" in row:
+                    anomaly = compute_header_anomaly_from_headers(row["headers_json"])
+                else:
+                    anomaly = float(row.get("header_anomaly_score", 0.0))
+
+                true_label = row.get("true_label", row.get("label", "normal"))
+                is_abuse = 0 if true_label == "normal" else 1
+
+                vec = self.compute_features_for_event(
+                    client_ip=client_key,
+                    timestamp=ts,
+                    path=req_path,
+                    status_code=status,
+                    header_anomaly_score=anomaly,
+                )
+                X.append(vec)
+                y.append(is_abuse)
+                labels.append(true_label)
+
+        if output_csv_path:
+            out_path = Path(output_csv_path)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(out_path, "w", newline="", encoding="utf-8") as out_f:
+                writer = csv.writer(out_f)
+                writer.writerow(FEATURE_NAMES + ["label", "is_abusive"])
+                for vec, label, is_abuse in zip(X, labels, y):
+                    writer.writerow(vec + [label, is_abuse])
+
+        return X, y, labels
+
+    def extract_from_raw_logs(
+        self,
+        raw_logs_path: Path | str,
+    ) -> Tuple[List[List[float]], List[int], List[str]]:
+        """Extract features from a CSV file of generic raw request logs."""
+        path = Path(raw_logs_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Raw logs file not found: {path}")
+
+        # Check if simulator format
+        with open(path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            first_row = next(reader, {})
+            if "headers_json" in first_row or "true_label" in first_row:
+                return self.extract_from_simulator_logs(path)
+
+        X: List[List[float]] = []
+        y: List[int] = []
+        labels: List[str] = []
+
+        with open(path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                ts = parse_timestamp_to_seconds(row.get("timestamp_iso", row.get("timestamp", 0)))
+                ip = row.get("client_ip", "127.0.0.1")
+                req_path = row.get("path", row.get("endpoint", "/"))
+                status = int(row.get("status_code", 200))
+                anomaly = float(row.get("header_anomaly_score", 0.0))
                 is_abuse = int(row.get("is_abusive", 0))
                 label = row.get("label", "normal")
 
@@ -217,3 +364,33 @@ def load_dataset(
         return np.array(X_list, dtype=np.float32), np.array(y_list, dtype=np.int64), labels
 
     return X_list, y_list, labels
+
+
+def main() -> None:
+    """CLI for feature extraction."""
+    parser = argparse.ArgumentParser(description="Extract features from raw HTTP traffic logs")
+    parser.add_argument(
+        "--input",
+        type=str,
+        default="data/raw/ground_truth_5k.csv",
+        help="Path to input raw traffic logs CSV",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="data/processed/real_features.csv",
+        help="Path to output processed features CSV",
+    )
+
+    args = parser.parse_args()
+
+    extractor = FeatureExtractor()
+    print(f"[*] Extracting features from {args.input} (Spec: v{SPEC_VERSION})...")
+    X, y, labels = extractor.extract_from_simulator_logs(args.input, output_csv_path=args.output)
+    print(f"[✓] Successfully extracted {len(X)} feature vectors -> {args.output}")
+    print(f"    - Abusive samples: {sum(y)}")
+    print(f"    - Normal samples:  {len(y) - sum(y)}")
+
+
+if __name__ == "__main__":
+    main()

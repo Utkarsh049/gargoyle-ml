@@ -53,3 +53,6 @@ data/processed/*
 # Models (keep placeholder / production onnx, ignore temporary/checkpoint pkls if needed)
 models/*.pkl
 models/*.checkpoint
+
+
+*.csv

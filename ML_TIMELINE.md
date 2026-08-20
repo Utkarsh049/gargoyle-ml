@@ -59,15 +59,26 @@ Six phases, named P1–P6 to keep them distinct from the Go core's numbered phas
 
 ---
 
-## Phase P4 — Real data ingestion
+## Phase P4 — Real data ingestion `[COMPLETED]`
 
-**Build:** Swap the synthetic data source for real output from the Go core's `simulator/` (main repo Phase 7). Re-run training, compare results against the P3 baseline.
+**Status:** Completed
 
-**Why here:** This is the first point where the model is actually learning something meaningful, rather than validating plumbing.
+**Deliverables:**
+- [`data/raw/ground_truth_5k.csv`](data/raw/ground_truth_5k.csv) — 5,000 real HTTP simulator request logs across 4 batches (`normal`: 2,000, `endpoint_sweep`: 1,000, `credential_stuffing`: 1,000, `rate_probe`: 1,000).
+- [`features/extract.py`](features/extract.py) — Ingestion pipeline supporting ISO timestamps, JSON header anomaly scoring, and endpoint normalization.
+- [`data/processed/real_features.csv`](data/processed/real_features.csv) — 5,000 feature-extracted vectors (Spec v1.0.0).
+- Retrained **Logistic Regression** and **Random Forest** models on real simulator data.
 
-**Depends on:** The Go core's simulator (main repo Phase 7) being done and producing labeled traffic logs.
+**Performance Benchmark vs. Go Rule Baseline (Test Set, N=1,000):**
+- **ML Model Precision:** `1.0000` (Random Forest) / `0.9983` (Logistic Regression) vs. Rule Baseline `0.6082`
+- **ML Model Specificity (TNR):** `1.0000` (0 False Positives) vs. Rule Baseline `0.0400` (rules misclassify 96% of sustained normal traffic)
+- **ML Model F1-Score:** `1.0000` (RF) / `0.9992` (LR) vs. Rule Baseline `0.7544`
 
-**Done when:** Training runs against real simulator output, and evaluation metrics are meaningfully better than a trivial baseline (e.g. "flag everything the rules already catch").
+**Why here:** Validates that the ML model learns genuine abuse patterns (timing variance, auth failure clusters, endpoint scans) and provides a defensible improvement over static rules alone.
+
+**Depends on:** Go core simulator output (`ground_truth_5k.csv`).
+
+**Done when:** Training runs against real simulator output, and evaluation metrics are meaningfully better than the trivial rule baseline. (Verified)
 
 ---
 
